@@ -1,8 +1,10 @@
-package com.example.unsplashgallery;
+package com.example.unsplashgallery.view.UI;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -12,10 +14,14 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
-import com.example.unsplashgallery.Api.ApiUtilities;
-import com.example.unsplashgallery.adapter.ImageAdapter;
+
+import com.example.unsplashgallery.R;
+import com.example.unsplashgallery.view.adapter.ImageAdapter;
+import com.example.unsplashgallery.databinding.ActivityMainBinding;
 import com.example.unsplashgallery.model.ImageModel;
 import com.example.unsplashgallery.model.SearchModel;
+import com.example.unsplashgallery.network.RetrofitClient;
+import com.example.unsplashgallery.viewModel.MainActivityViewModel;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,26 +32,29 @@ import retrofit2.Response;
 
 
 public class MainActivity extends AppCompatActivity {
+
     private RecyclerView recyclerView;
     private ArrayList<ImageModel> list;
+
     private GridLayoutManager manager;
     private ImageAdapter adapter;
-    private int page = 1;
     private ProgressDialog progressDialog;
-
     private int pageSize = 30;
     private boolean isLoading;
     private boolean isLastPage;
+    private MainActivityViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        ActivityMainBinding mainBinding = ActivityMainBinding.inflate(getLayoutInflater());
+        setContentView(mainBinding.getRoot());
 
-        recyclerView = findViewById(R.id.recyclerView);
+        recyclerView = mainBinding.recView;
+
         list = new ArrayList<>();
         adapter = new ImageAdapter(this, list);
-        manager = new GridLayoutManager(this,3);
+        manager = new GridLayoutManager(this, 3);
 
         recyclerView.setLayoutManager(manager);
         recyclerView.setHasFixedSize(true);
@@ -56,7 +65,10 @@ public class MainActivity extends AppCompatActivity {
         progressDialog.setCancelable(false);
         progressDialog.show();
 
-        getData();
+        viewModel = new ViewModelProvider(this).get(MainActivityViewModel.class);
+        int page = viewModel.incrementPage();
+        showImage(page);
+
 
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -66,11 +78,13 @@ public class MainActivity extends AppCompatActivity {
                 int totalItem = manager.getItemCount();
                 int firstVisibleItemPosition = manager.findFirstVisibleItemPosition();
 
-                if (!isLoading && !isLastPage){
-                    if ((visibleItem+firstVisibleItemPosition >=totalItem)
-                        && firstVisibleItemPosition >= 0 && totalItem >= pageSize){
-                        page++;
-                        getData();
+                if (!isLoading && !isLastPage) {
+                    if ((visibleItem + firstVisibleItemPosition >= totalItem)
+                            && firstVisibleItemPosition >= 0 && totalItem >= pageSize) {
+
+                        int page = viewModel.incrementPage();
+                        showImage(page);
+
                     }
                 }
             }
@@ -82,34 +96,26 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void getData() {
+    private void showImage(int pageNumber) {
         isLoading = true;
-        ApiUtilities.getApiInterface().getImage(page, 30).enqueue(new Callback<List<ImageModel>>() {
+
+        viewModel.getImages(pageNumber).observe(this, new Observer<List<ImageModel>>() {
             @Override
-            public void onResponse(Call<List<ImageModel>> call, Response<List<ImageModel>> response) {
-
-                if (response.body()!=null){
-                    list.addAll(response.body());
+            public void onChanged(List<ImageModel> imageModels) {
+                if (imageModels != null) {
+                    list.addAll(viewModel.getTotalImageList(imageModels));
                     adapter.notifyDataSetChanged();
-
                 }
-
                 isLoading = false;
                 progressDialog.dismiss();
 
-                if (list.size()>0){
-
-                    isLastPage= list.size() <pageSize;
-                }else isLastPage = true;
-            }
-
-            @Override
-            public void onFailure(Call<List<ImageModel>> call, Throwable t) {
-                progressDialog.dismiss();
-                Toast.makeText(MainActivity.this,"Error : "+t.getMessage(),Toast.LENGTH_SHORT).show();
+                if (list.size() > 0) {
+                    isLastPage = list.size() < pageSize;
+                } else isLastPage = true;
             }
         });
     }
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -135,17 +141,16 @@ public class MainActivity extends AppCompatActivity {
 
     private void searchData(String query) {
         progressDialog.dismiss();
-        ApiUtilities.getApiInterface().searchImage(query).enqueue(new Callback<SearchModel>() {
+        viewModel.getSearchImages(query).observe(this, new Observer<List<ImageModel>>() {
             @Override
-            public void onResponse(Call<SearchModel> call, Response<SearchModel> response) {
-                list.clear();
-                list.addAll(response.body().getResults());
-                adapter.notifyDataSetChanged();
-            }
+            public void onChanged(List<ImageModel> imageModel) {
 
-            @Override
-            public void onFailure(Call<SearchModel> call, Throwable t) {
-                Toast.makeText(MainActivity.this,"Search Error: "+t.getMessage(),Toast.LENGTH_SHORT).show();
+                //viewModel.ClearAll();
+                list.clear();
+                list.addAll(imageModel);
+                //list.addAll(viewModel.getSearchImageList(imageModel));
+
+                adapter.notifyDataSetChanged();
             }
         });
 

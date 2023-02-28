@@ -1,4 +1,4 @@
-package com.example.unsplashgallery.adapter;
+package com.example.unsplashgallery.view.adapter;
 
 import android.content.Context;
 import android.content.Intent;
@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.unsplashgallery.R;
-import com.example.unsplashgallery.ZoomActivity;
+import com.example.unsplashgallery.view.UI.ZoomActivity;
 import com.example.unsplashgallery.model.ImageModel;
 
 import java.util.ArrayList;
@@ -39,7 +39,7 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHol
     public void onBindViewHolder(@NonNull ImageAdapter.ImageViewHolder holder, int position) {
 
         Glide.with(context).load(list.get(position).getUrls().getRegular()).into(holder.imageView);
-        holder.imageView.setOnClickListener(view ->{
+        holder.imageView.setOnClickListener(view -> {
             Intent intent = new Intent(context, ZoomActivity.class);
             intent.putExtra("image", list.get(position).getUrls().getRegular());
             context.startActivity(intent);
@@ -56,7 +56,7 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ImageViewHol
 
         public ImageViewHolder(@NonNull View itemView) {
             super(itemView);
-            imageView =itemView.findViewById(R.id.imageView);
+            imageView = itemView.findViewById(R.id.imageView);
         }
     }
 }
